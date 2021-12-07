@@ -10,6 +10,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-v", "--video", type=str, help="Path to input video file (optional)")
     ap.add_argument("-t", "--tracker", type=str, default="boosting", help="OpenCV object tracker type")
+    ap.add_argument("--trail", action="store_true", help="Display movement history on screen")
     args = vars(ap.parse_args())
 
     # List of available trackers from OpenCV
@@ -28,6 +29,11 @@ def main():
 
     # Init bounding box and FPS
     bounding_box = None
+
+    # Init object trail tracking
+    trail = args["trail"]
+    if trail:
+        point_history = []
 
     # Get reference to the webcam and start streaming
     if not args.get("video", False):
@@ -64,6 +70,26 @@ def main():
                 # Mark current bounding box on the frame
                 cv.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
+                # Draw the trail
+                if trail:
+                    # Save current location
+                    point_history.append((x + (w // 2), y + (h // 2)))
+
+                    # We need to draw the full history each frame
+                    try:
+                        idx = 0
+                        while True:
+                            cv.line(frame, point_history[idx], point_history[idx+1], (255, 0, 0), 2)
+                            idx += 1
+                    except IndexError:
+                        pass
+                    
+                    # Remove the oldest element after x frames to avoid cluttering the display
+                    # Could be optimized later if necessary - maybe use a linked list?
+                    # + track len as var
+                    if len(point_history) > 100:
+                        point_history.pop(0)
+
             # Define information to display on frame
             info_top = [f'Tracker: {args["tracker"]}']
             info_bottom = ["Press N if you want to select new object.", "Press Q if you want to quit."]
@@ -86,6 +112,10 @@ def main():
             for item in info:
                 cv.putText(frame, item, (5, H - (H - (i * 20))), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
                 i += 1
+
+            # Clear point history when no object is being tracked
+            if trail:
+                point_history = []
 
         # Show current output frame
         cv.imshow("Frame", frame)
@@ -110,6 +140,8 @@ def main():
             # Reset critical variables
             bounding_box = None
             tracker = list_of_trackers[args["tracker"]]()
+            if trail:
+                point_history = []
 
         # Key "Q" ends running the program
         elif key == ord("q"):
