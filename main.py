@@ -110,6 +110,7 @@ def main():
 
                 # Draw the trail
                 if isTrail:
+                  
                     # Save current location
                     point_history.append((x + (w // 2), y + (h // 2)))
 
@@ -121,7 +122,7 @@ def main():
                             idx += 1
                     except IndexError:
                         pass
-
+        
                     # Remove the oldest element after x frames to avoid cluttering the display
                     # Could be optimized later if necessary - maybe use a linked list?
                     # + track len as var
