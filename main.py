@@ -26,13 +26,20 @@ filepath = 'C:/'
 trackerType = StringVar(window, "csrt")
 isTrail = BooleanVar()
 isStream = BooleanVar()
+trailSeconds = DoubleVar()
 
 
 def open_file():
-   file = filedialog.askopenfile(mode='r', filetypes=[('Video files', '*.*')])
-   if file:
-      filepath = os.path.abspath(file.name)
-      Label(window, text="File path: " + str(filepath), font=('Aerial 11')).place(x = 5, y = 175)
+    file = filedialog.askopenfile(mode='r', filetypes=[('Video files', '*.*')])
+    if file:
+        global filepath
+        filepath = os.path.abspath(file.name)
+        Label(window, text="File path: " + str(filepath), font=('Aerial 11')).place(x=5, y=175)
+
+
+def change(val):
+    global trailSeconds
+    trailSeconds = float(val)
 
 
 def setup_gui():
@@ -47,6 +54,10 @@ def setup_gui():
     is_stream_checkbox = Checkbutton(window, text="Camera Stream", variable=isStream)
     is_trail_checkbox.place(x=200, y=50)
     is_stream_checkbox.place(x=200, y=75)
+    trail_slider = tk.Scale(window, from_=0, to=10, orient=HORIZONTAL, resolution=0.5, command=change)
+    trail_slider.place(x=400, y=50)
+    label_options = tk.Label(text='Trail seconds:')
+    label_options.place(x=410, y=30)
 
     label_browse = tk.Label(text='Optionally browse video file:')
     label_browse.place(x=5, y=125)
@@ -126,7 +137,7 @@ def main():
                     # Remove the oldest element after x frames to avoid cluttering the display
                     # Could be optimized later if necessary - maybe use a linked list?
                     # + track len as var
-                    if len(point_history) > 100:
+                    if len(point_history) > trailSeconds * 10:
                         point_history.pop(0)
 
             # Define information to display on frame
