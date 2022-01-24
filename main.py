@@ -12,11 +12,11 @@ from tkinter import *
 list_of_trackers = {
     "csrt": cv.TrackerCSRT_create,
     "kcf": cv.TrackerKCF_create,
-    "boosting": cv.TrackerBoosting_create,
+    "boosting": cv.legacy.TrackerBoosting_create,
     "mil": cv.TrackerMIL_create,
-    "tld": cv.TrackerTLD_create,
-    "medianflow": cv.TrackerMedianFlow_create,
-    "mosse": cv.TrackerMOSSE_create
+    "tld": cv.legacy.TrackerTLD_create,
+    "medianflow": cv.legacy.TrackerMedianFlow_create,
+    "mosse": cv.legacy.TrackerMOSSE_create
 }
 
 window = tk.Tk()
@@ -24,9 +24,10 @@ window.title('Setup')
 window.geometry("800x350")
 filepath = 'C:/'
 trackerType = StringVar(window, "csrt")
-isTrail = BooleanVar()
-isStream = BooleanVar()
-trailSeconds = DoubleVar()
+isTrail = BooleanVar(value=False)
+isStream = BooleanVar(value=False)
+isVector = BooleanVar(value=False)
+trailSeconds = float()
 
 
 def open_file():
@@ -48,15 +49,20 @@ def setup_gui():
     tracker_select = OptionMenu(window, trackerType, *list_of_trackers)
     tracker_select.place(x=200, y=5)
 
+    close_button = Button(window, text="Proceed", command=window.destroy)
+    close_button.place(x=375, y=300)
+
     label_options = tk.Label(text='Other options:')
     label_options.place(x=5, y=50)
     is_trail_checkbox = Checkbutton(window, text="Trail", variable=isTrail)
     is_stream_checkbox = Checkbutton(window, text="Camera Stream", variable=isStream)
+    is_vector_checkbox = Checkbutton(window, text="Movement Vector", variable=isVector)
     is_trail_checkbox.place(x=200, y=50)
     is_stream_checkbox.place(x=200, y=75)
+    is_vector_checkbox.place(x=200, y=100)
     trail_slider = tk.Scale(window, from_=0, to=10, orient=HORIZONTAL, resolution=0.5, command=change)
     trail_slider.place(x=400, y=50)
-    label_options = tk.Label(text='Trail seconds:')
+    label_options = tk.Label(text='Trail/Vector history seconds:')
     label_options.place(x=410, y=30)
 
     label_browse = tk.Label(text='Optionally browse video file:')
@@ -65,8 +71,6 @@ def setup_gui():
     label_warning = tk.Label(text='Video playback from file works only when "Camera Stream" option is unchecked.')
     label_warning.place(x=5, y=225)
 
-    close_button = Button(window, text="Proceed", command=window.destroy)
-    close_button.place(x=375, y=300)
     window.mainloop()
 
 
@@ -83,6 +87,7 @@ def main():
     # Init object trail tracking
     if isTrail:
         point_history = []
+
 
     # Get reference to the webcam and start streaming
     if isStream.get():
@@ -119,26 +124,40 @@ def main():
                 # Mark current bounding box on the frame
                 cv.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
-                # Draw the trail
-                if isTrail:
-                  
-                    # Save current location
-                    point_history.append((x + (w // 2), y + (h // 2)))
 
-                    # We need to draw the full history each frame
-                    try:
-                        idx = 0
-                        while True:
+                point_history.append((x + (w // 2), y + (h // 2)))
+
+                try:
+                    idx = 0
+                    while True:
+                        if isTrail.get():
                             cv.line(frame, point_history[idx], point_history[idx + 1], (255, 0, 0), 2)
-                            idx += 1
-                    except IndexError:
-                        pass
-        
-                    # Remove the oldest element after x frames to avoid cluttering the display
-                    # Could be optimized later if necessary - maybe use a linked list?
-                    # + track len as var
-                    if len(point_history) > trailSeconds * 10:
-                        point_history.pop(0)
+
+                        if isVector.get():
+                            variableX = point_history[idx][0]-point_history[idx+10][0]
+                            variableY = point_history[idx][1]-point_history[idx+10][1]
+
+                            if variableX > 15 and variableY > 15:
+                                cv.arrowedLine(frame, (x,y),(x -variableX-5, y - variableY - 5),(255, 255, 0), 2)
+
+                            elif variableX > 15 and variableY < 15:
+
+                                cv.arrowedLine(frame, (x, y+h), (x - variableX - 5, (y+h) + variableY + 5),(255, 255, 0), 2)
+
+                            elif variableX < 15 and variableY < 15:
+                                cv.arrowedLine(frame, (x + w, y + h), (x + w - variableX - 5, y + h - variableY - 5),  (255, 255, 0), 2)
+
+                            elif variableX < 15 and variableY > 15:
+                                cv.arrowedLine(frame, (x + w, y ), (x + w - variableX - 5, y - variableY - 5),
+                                                (255, 255, 0), 2)
+
+                        idx += 1
+                except IndexError:
+                    pass
+
+                if len(point_history) > trailSeconds * 10:
+                    point_history.pop(0)
+
 
             # Define information to display on frame
             info_top = [f'Tracker: {trackerType.get()}']
