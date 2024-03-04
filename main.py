@@ -75,6 +75,10 @@ def setup_gui():
 
 
 def main():
+    #open txt file to write points to
+    f = open('points.txt', 'w+')
+    PauseVal = -1
+
     # Start setup
     setup_gui()
 
@@ -110,8 +114,11 @@ def main():
             loop_over_frames = False
 
         # Resize frame in order to process it faster, then save current frame dimensions
-        frame = imutils.resize(frame, width=500)
+        frame = imutils.resize(frame, width=1000)
         (H, W) = frame.shape[:2]
+
+        if(PauseVal < 0):
+            PauseVal = cv.waitKey(0)
 
         if bounding_box is not None:
             # Get bounding box f item is selected
@@ -124,8 +131,10 @@ def main():
                 # Mark current bounding box on the frame
                 cv.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
-
+                #write point locations to text file
                 point_history.append((x + (w // 2), y + (h // 2)))
+                point = (x + (w // 2), ',', y + (h // 2))
+                f.write(''.join(str(i) for i in point) + '\n')
 
                 try:
                     idx = 0
@@ -155,8 +164,9 @@ def main():
                 except IndexError:
                     pass
 
-                if len(point_history) > trailSeconds * 10:
-                    point_history.pop(0)
+
+                #if len(point_history) > trailSeconds * 10:
+                #    point_history.pop(0)
 
 
             # Define information to display on frame
@@ -165,27 +175,29 @@ def main():
 
             i = 1
             for text in info_top:
-                cv.putText(frame, text, (5, H - (i * 20) + 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                cv.putText(frame, text, (5, H - (i * 20) + 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
                 i += 1
 
             i = 1
             for item in info_bottom:
-                cv.putText(frame, item, (5, H - (H - (i * 20))), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                cv.putText(frame, item, (5, H - (H - (i * 20))), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
                 i += 1
+
 
         elif bounding_box is None:
             # Define information to display on frame
-            info = ["Press S if you want to select bounding box.", "Press Q if you want to quit."]
+            info = ["Press S if you want to select bounding box.", "Press Q if you want to quit.", "Press ANY KEY to start video"]
 
             i = 1
             for item in info:
-                cv.putText(frame, item, (5, H - (H - (i * 20))), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                cv.putText(frame, item, (5, H - (H - (i * 20))), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
                 i += 1
 
+            
             # Clear point history when no object is being tracked
             if isTrail:
                 point_history = []
-
+            
         # Show current output frame
         cv.imshow("Frame", frame)
 
@@ -196,7 +208,7 @@ def main():
         if key == ord("s"):
             # Define information to display on frame
             info = "Press ENTER if you want to confirm BB."
-            cv.putText(frame, info, (5, H - (H - (3 * 20))), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            cv.putText(frame, info, (5, H - (H - (4 * 20))), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
             # Select object on current frame
             bounding_box = cv.selectROI("Frame", frame, fromCenter=False, showCrosshair=True)
@@ -216,6 +228,8 @@ def main():
         elif key == ord("q"):
             loop_over_frames = False
 
+    f.close()
+
     # Release webcam pointer
     if isStream.get():
         vs.stop()
@@ -226,6 +240,6 @@ def main():
     # Destroy windows
     cv.destroyAllWindows()
 
-
 if __name__ == '__main__':
     main()
+
